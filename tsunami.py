@@ -63,7 +63,7 @@ class Tsunami:
     def getLastMinutePrice(self):
         lastMinuteId = self.getLastMinuteId()
         req = requests.get('https://nodes.wavesnodes.com/addresses/data/3P9mFc9Zn9bsk9McUXECybF4imt7691VM1F/k_twapDataLastPrice_' + str(lastMinuteId)).json()
-        print(req)
+        return req['value']
 
     def getMarginRatioByOption(self, address, option):
         marginRatio = requests.post(node + '/utils/script/evaluate/' + self.amm, json={
@@ -85,6 +85,10 @@ class Tsunami:
     def positionLstUpdCPF(self, address):
         position = self.getPosition(address)
         return position['_4']['value']
+    
+    def getMarketPriceFromDapp(self):
+        req = requests.post(node + '/utils/script/evaluate/' + self.dapp, json={ "expr": "getMarketPrice(\"" + self.amm + "\")"}).json()
+        return req
 
 
 node = 'https://nodes.wavesexplorer.com'
@@ -96,12 +100,8 @@ myAddress = '3PP6kMgzK2d9zP4i5Zt7RtbpjaMZZzdhR63'
 
 tsunami = Tsunami(dapp, amm, myAddress=myAddress, node=node)
 
-last = tsunami.getLastMinuteId()
-
-lastPrice = tsunami.getLastMinutePrice()
-marketPrice = tsunami.getMarketPrice()
-
-print(marketPrice)
+marketPrice = tsunami.getMarketPriceFromDapp()
+print(json.dumps(marketPrice, indent=4))
 
 
 #              let positionSize = $t07705077174._1
