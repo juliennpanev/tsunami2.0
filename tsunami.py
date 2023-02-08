@@ -53,7 +53,7 @@ class Tsunami:
         positionTimestamp = position['_5']['value']
         unrealizedPnl = self.getPositionNotionalAndUnrealizedPnl(self.myAddress, 1)['unrealizedPnl']
 
-        res = requests.post(self.node + '/utils/script/evaluate/' + self.amm, json = { "expr": "calcRemainMarginWithFundingPaymentAndRolloverFee(" + str(positionSize) + ", "  + str(positionMargin) + ", " + str(positionLstUpdCPF) + ", " + str(positionTimestamp) + ", " + str(unrealizedPnl) + ")" }).json() 
+        res = requests.post(self.node + '/utils/script/evaluate/' + self.amm, json = { "expr": "calcRemainMarginWithFundingPaymentAndRolloverFee(" + str(positionSize) + ", "  + str(positionMargin) + ", " + str(positionLstUpdCPF) + ", " + str(positionTimestamp) + ", " + str(unrealizedPnl['value']) + ")" }).json() 
         return res
     
     def getLastMinuteId(self):
@@ -102,6 +102,10 @@ tsunami = Tsunami(dapp, amm, myAddress=myAddress, node=node)
 
 marketPrice = tsunami.getMarketPriceFromDapp()
 print(json.dumps(marketPrice, indent=4))
+test = tsunami.getPositionNotionalAndUnrealizedPnl(tsunami.myAddress, 1)
+calc = tsunami.calcRemainMarginWithFundingPaymentAndRolloverFee()
+
+print(json.dumps(test, indent=4))
 
 
 #              let positionSize = $t07705077174._1
