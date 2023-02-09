@@ -3,11 +3,13 @@ import requests
 
 class Tsunami:
 
-    def __init__(self, dapp, amm, myAddress=None, node='https://nodes.wavesexplorer.com'):
+    def __init__(self, dapp, amm, myAddress=None, node='https://nodes.wavesexplorer.com', xtnId='DG2xFkPdDwKUoBkzGAhQtLpSGzfXLiCYPEzeKH2Ad24p'):
         self.dapp = dapp
         self.amm = amm
         self.myAddress = myAddress
         self.node = node
+        self.LONG = 1
+        self.SHORT = 2
 
     def getQuoteAssetReserve(self):
         req = requests.get(
@@ -115,3 +117,18 @@ class Tsunami:
         req = requests.post(self.node + '/utils/script/evaluate/' + self.dapp,
                             json={"expr": "getMarketPrice(\"" + self.amm + "\")"}).json()
         return req['result']['value']
+
+    def short(self, wallet,  investment, margin, ref):
+        minBaseAssetAmount = (investment * margin) / \
+            self.getMarketPriceFromDapp()
+        wallet.invokeScript(self.amm, "increasePosition", [{"type": "integer", "value": self.SHORT}, {
+            "type": "integer", "value": margin}, {"type": "integer", "value": minBaseAssetAmount}, {"type": "string", "value": ref}],
+            [{"amount": investment, "assetId": self.xtnId}])
+        
+    def long(self, wallet,  investment, margin, ref):
+        minBaseAssetAmount = (investment * margin) / \
+            self.getMarketPriceFromDapp()
+        wallet.invokeScript(self.amm, "increasePosition", [{"type": "integer", "value": self.LONG}, {
+            "type": "integer", "value": margin}, {"type": "integer", "value": minBaseAssetAmount}, {"type": "string", "value": ref}],
+            [{"amount": investment, "assetId": self.xtnId}])
+
