@@ -119,16 +119,17 @@ class Tsunami:
         return req['result']['value']
 
     def short(self, wallet,  investment, margin, ref):
-        minBaseAssetAmount = (investment * margin) / \
-            self.getMarketPriceFromDapp()
+        minBaseAssetAmount = (investment * margin) / self.getMarketPriceFromDapp()
         wallet.invokeScript(self.amm, "increasePosition", [{"type": "integer", "value": self.SHORT}, {
-            "type": "integer", "value": margin}, {"type": "integer", "value": minBaseAssetAmount}, {"type": "string", "value": ref}],
+            "type": "integer", "value": margin}, {"type": "integer", "value": int(minBaseAssetAmount)}, {"type": "string", "value": ref}],
             [{"amount": investment, "assetId": self.xtnId}])
         
     def long(self, wallet,  investment, margin, ref):
-        minBaseAssetAmount = (investment * margin) / \
-            self.getMarketPriceFromDapp()
+        minBaseAssetAmount = (investment * margin) / self.getMarketPriceFromDapp()
         wallet.invokeScript(self.amm, "increasePosition", [{"type": "integer", "value": self.LONG}, {
-            "type": "integer", "value": margin}, {"type": "integer", "value": minBaseAssetAmount}, {"type": "string", "value": ref}],
+            "type": "integer", "value": margin}, {"type": "integer", "value": int(minBaseAssetAmount)}, {"type": "string", "value": ref}],
             [{"amount": investment, "assetId": self.xtnId}])
 
+    def closePosition(self, wallet, minQuoteAssetAmount, addToMargin):
+        size = self.getPositionSize()
+        wallet.invokeScript(self.amm, "closePosition", [{"type": "integer", "value": size}, {"type": "integer", "value": minQuoteAssetAmount}, {"type": "boolean", "value": addToMargin}])
