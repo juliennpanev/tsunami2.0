@@ -119,13 +119,13 @@ class Tsunami:
         return req['result']['value']
 
     def short(self, wallet,  investment, margin, ref):
-        minBaseAssetAmount = (investment * margin) / self.getMarketPriceFromDapp()
+        minBaseAssetAmount = ((investment * margin) / self.getMarketPriceFromDapp()) * pow(10, 6)
         wallet.invokeScript(self.amm, "increasePosition", [{"type": "integer", "value": self.SHORT}, {
             "type": "integer", "value": margin}, {"type": "integer", "value": int(minBaseAssetAmount)}, {"type": "string", "value": ref}],
             [{"amount": investment, "assetId": self.xtnId}])
         
     def long(self, wallet,  investment, margin, ref):
-        minBaseAssetAmount = (investment * margin) / self.getMarketPriceFromDapp()
+        minBaseAssetAmount = ((investment * margin) / self.getMarketPriceFromDapp()) * pow(10, 6)
         wallet.invokeScript(self.amm, "increasePosition", [{"type": "integer", "value": self.LONG}, {
             "type": "integer", "value": margin}, {"type": "integer", "value": int(minBaseAssetAmount)}, {"type": "string", "value": ref}],
             [{"amount": investment, "assetId": self.xtnId}])
