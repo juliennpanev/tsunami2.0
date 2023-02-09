@@ -1,5 +1,4 @@
 import requests
-import json
 
 
 class Tsunami:
@@ -10,19 +9,41 @@ class Tsunami:
         self.myAddress = myAddress
         self.node = node
 
-    node = 'https://nodes.wavesexplorer.com'
+    def getQuoteAssetReserve(self):
+        req = requests.get(
+            'http://nodes.wavesnodes.com/addresses/data/3P9mFc9Zn9bsk9McUXECybF4imt7691VM1F/k_qtAstR').json()
+        return req['value']
 
-    amm = '3P9mFc9Zn9bsk9McUXECybF4imt7691VM1F'  # closePosition
-    dapp = '3PJ8HS6FmeM3owQUwv6znVbAzQXFtxNUYDs'  # increasePosition
+    def getQuoteAssetWeight(self):
+        req = requests.get(
+            'http://nodes.wavesnodes.com/addresses/data/3P9mFc9Zn9bsk9McUXECybF4imt7691VM1F/k_qtAstW').json()
+        return req['value']
 
-    address = '3PP6kMgzK2d9zP4i5Zt7RtbpjaMZZzdhR63'
+    def getBaseAssetReserve(self):
+        req = requests.get(
+            'http://nodes.wavesnodes.com/addresses/data/3P9mFc9Zn9bsk9McUXECybF4imt7691VM1F/k_bsAstR').json()
+        return req['value']
 
-    get_position_str = "getPosition()"
+    def getBaseAssetWeight(self):
+        req = requests.get(
+            'http://nodes.wavesnodes.com/addresses/data/3P9mFc9Zn9bsk9McUXECybF4imt7691VM1F/k_bsAstW').json()
+        return req['value']
 
     def getSpotPrice(self):
         spot_price = requests.post(self.node + '/utils/script/evaluate/' + self.amm,
                                    json={"expr": "getSpotPrice()"}).json()
         return spot_price['result']['value']
+
+    def getPositionAdjustedOpenNotional(self):
+        pisitionSize = self.getPositionSize(self.myAddress)
+        quoteAssetReserve = self.getQuoteAssetReserve()
+        quoteAssetWeight = self.getQuoteAssetWeight()
+        baseAssetReserve = self.getBaseAssetReserve()
+        baseAssetWeight = self.getBaseAssetWeight()
+
+        adjNotional = requests.post(self.node + '/utils/script/evaluate/' + self.amm, json={"expr": "getPositionAdjustedOpenNotional(" + str(
+            pisitionSize) + ", " + str(quoteAssetReserve) + ", " + str(quoteAssetWeight) + ", " + str(baseAssetReserve) + ", " + str(baseAssetWeight) + ")"}).json()
+        return adjNotional['result']['value']
 
     def getMarketPrice(self):
         twapSpotPrice = requests.post(self.node + '/utils/script/evaluate/' + self.amm,
@@ -43,7 +64,7 @@ class Tsunami:
         pnl = requests.post(self.node + '/utils/script/evaluate/' + self.amm, json={
             "expr": "getPositionNotionalAndUnrealizedPnl(\"" + address + "\", " + str(option) + ")"}).json()
         data = pnl['result']
-        return { "positionNotional" : data['value']['_1'], "unrealizedPnl" : data['value']['_2']}
+        return {"positionNotional": data['value']['_1'], "unrealizedPnl": data['value']['_2']}
 
     def calcRemainMarginWithFundingPaymentAndRolloverFee(self):
         position = self.getPosition(self.myAddress)
@@ -51,22 +72,26 @@ class Tsunami:
         positionMargin = position['_2']['value']
         positionLstUpdCPF = position['_4']['value']
         positionTimestamp = position['_5']['value']
-        unrealizedPnl = self.getPositionNotionalAndUnrealizedPnl(self.myAddress, 1)['unrealizedPnl']
+        unrealizedPnl = self.getPositionNotionalAndUnrealizedPnl(self.myAddress, 1)[
+            'unrealizedPnl']
 
-        res = requests.post(self.node + '/utils/script/evaluate/' + self.amm, json = { "expr": "calcRemainMarginWithFundingPaymentAndRolloverFee(" + str(positionSize) + ", "  + str(positionMargin) + ", " + str(positionLstUpdCPF) + ", " + str(positionTimestamp) + ", " + str(unrealizedPnl['value']) + ")" }).json() 
+        res = requests.post(self.node + '/utils/script/evaluate/' + self.amm, json={"expr": "calcRemainMarginWithFundingPaymentAndRolloverFee(" + str(
+            positionSize) + ", " + str(positionMargin) + ", " + str(positionLstUpdCPF) + ", " + str(positionTimestamp) + ", " + str(unrealizedPnl['value']) + ")"}).json()
         return res
-    
+
     def getLastMinuteId(self):
-        req = requests.get('https://nodes.wavesnodes.com/addresses/data/3P9mFc9Zn9bsk9McUXECybF4imt7691VM1F/k_lastMinuteId').json()
+        req = requests.get(
+            'https://nodes.wavesnodes.com/addresses/data/3P9mFc9Zn9bsk9McUXECybF4imt7691VM1F/k_lastMinuteId').json()
         return req['value']
-    
+
     def getLastMinutePrice(self):
         lastMinuteId = self.getLastMinuteId()
-        req = requests.get('https://nodes.wavesnodes.com/addresses/data/3P9mFc9Zn9bsk9McUXECybF4imt7691VM1F/k_twapDataLastPrice_' + str(lastMinuteId)).json()
+        req = requests.get(
+            'https://nodes.wavesnodes.com/addresses/data/3P9mFc9Zn9bsk9McUXECybF4imt7691VM1F/k_twapDataLastPrice_' + str(lastMinuteId)).json()
         return req['value']
 
     def getMarginRatioByOption(self, address, option):
-        marginRatio = requests.post(node + '/utils/script/evaluate/' + self.amm, json={
+        marginRatio = requests.post(self.node + '/utils/script/evaluate/' + self.amm, json={
             "expr": "getMarginRatioByOption(\"" + address + "\", " + str(option) + ")"}).json()
         return marginRatio['result']['value']
 
@@ -85,31 +110,8 @@ class Tsunami:
     def positionLstUpdCPF(self, address):
         position = self.getPosition(address)
         return position['_4']['value']
-    
+
     def getMarketPriceFromDapp(self):
-        req = requests.post(node + '/utils/script/evaluate/' + self.dapp, json={ "expr": "getMarketPrice(\"" + self.amm + "\")"}).json()
-        return req
-
-
-node = 'https://nodes.wavesexplorer.com'
-
-amm = '3P9mFc9Zn9bsk9McUXECybF4imt7691VM1F'  # closePosition
-dapp = '3PJ8HS6FmeM3owQUwv6znVbAzQXFtxNUYDs'  # increasePosition
-
-myAddress = '3PP6kMgzK2d9zP4i5Zt7RtbpjaMZZzdhR63'
-
-tsunami = Tsunami(dapp, amm, myAddress=myAddress, node=node)
-
-marketPrice = tsunami.getMarketPriceFromDapp()
-print(json.dumps(marketPrice, indent=4))
-test = tsunami.getPositionNotionalAndUnrealizedPnl(tsunami.myAddress, 1)
-calc = tsunami.calcRemainMarginWithFundingPaymentAndRolloverFee()
-
-print(json.dumps(test, indent=4))
-
-
-#              let positionSize = $t07705077174._1
-#              let positionMargin = $t07705077174._2
-#              let pon = $t07705077174._3
-#              let positionLstUpdCPF = $t07705077174._4
-#              let positionTimestamp = $t07705077174._5
+        req = requests.post(self.node + '/utils/script/evaluate/' + self.dapp,
+                            json={"expr": "getMarketPrice(\"" + self.amm + "\")"}).json()
+        return req['result']['value']
