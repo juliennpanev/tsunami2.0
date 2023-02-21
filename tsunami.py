@@ -3,7 +3,7 @@ import requests
 
 class Tsunami:
 
-    def __init__(self, dapp, amm, myAddress=None, node='http://20.7.14.174:6869', xtnId='DG2xFkPdDwKUoBkzGAhQtLpSGzfXLiCYPEzeKH2Ad24p'):
+    def __init__(self, dapp, amm, myAddress=None, node='http://nodes.wavesnodes.com', xtnId='DG2xFkPdDwKUoBkzGAhQtLpSGzfXLiCYPEzeKH2Ad24p'):
         self.dapp = dapp
         self.amm = amm
         self.myAddress = myAddress
@@ -41,15 +41,15 @@ class Tsunami:
                                    json={"expr": "getTwapSpotPrice()"}).json()
         return spot_price['result']['value']
 
-    def getPositionAdjustedOpenNotional(self):
-        pisitionSize = self.getPositionSize(self.myAddress)
+    def getPositionAdjustedOpenNotional(self, positionSize):
+
         quoteAssetReserve = self.getQuoteAssetReserve()
         quoteAssetWeight = self.getQuoteAssetWeight()
         baseAssetReserve = self.getBaseAssetReserve()
         baseAssetWeight = self.getBaseAssetWeight()
 
         adjNotional = requests.post(self.node + '/utils/script/evaluate/' + self.amm, json={"expr": "getPositionAdjustedOpenNotional(" + str(
-            pisitionSize) + ", " + str(quoteAssetReserve) + ", " + str(quoteAssetWeight) + ", " + str(baseAssetReserve) + ", " + str(baseAssetWeight) + ")"}).json()
+            positionSize) + ", " + str(quoteAssetReserve) + ", " + str(quoteAssetWeight) + ", " + str(baseAssetReserve) + ", " + str(baseAssetWeight) + ")"}).json()
         return adjNotional['result']
 
     def getMarketPrice(self):
@@ -65,25 +65,28 @@ class Tsunami:
     def getPosition(self, address):
         position = requests.post(self.node + '/utils/script/evaluate/' + self.amm,
                                  json={"expr": "getPosition(\"" + address + "\")"}).json()
-        return position['result']['value']
+        res = position['result']['value']
+        return {
+            "positionSize": res['_1']['value'],
+            "positionMargin": res['_2']['value'],
+            "positionNotional": res['_3']['value'],
+            "positionLastUpdCPF": res['_4']['value'],
+            "positionTimestamp": res['_5']['value']
+        }
 
-    def getPositionNotionalAndUnrealizedPnl(self, address, option):
+    def getPositionNotionalAndUnrealizedPnl(self, address):
         pnl = requests.post(self.node + '/utils/script/evaluate/' + self.amm, json={
-            "expr": "getPositionNotionalAndUnrealizedPnl(\"" + address + "\", " + "\"" + str(option) + "\"" + ")"}).json()
+            "expr": "getPositionNotionalAndUnrealizedPnl(\"" + address + "\", " + "\"" + str(1) + "\"" + ")"}).json()
         data = pnl['result']
         return {"positionNotional": data['value']['_1'], "unrealizedPnl": data['value']['_2']}
 
-    def calcRemainMarginWithFundingPaymentAndRolloverFee(self):
-        position = self.getPosition(self.myAddress)
-        positionSize = position['_1']['value']
-        positionMargin = position['_2']['value']
-        positionLstUpdCPF = position['_4']['value']
-        positionTimestamp = position['_5']['value']
-        unrealizedPnl = self.getPositionNotionalAndUnrealizedPnl(self.myAddress, 1)[
+    def calcRemainMarginWithFundingPaymentAndRolloverFee(self, positionSize, positionMargin, positionLastUpdCPF, positionTimestamp):
+
+        unrealizedPnl = self.getPositionNotionalAndUnrealizedPnl(self.myAddress)[
             'unrealizedPnl']
 
         res = requests.post(self.node + '/utils/script/evaluate/' + self.amm, json={"expr": "calcRemainMarginWithFundingPaymentAndRolloverFee(" + str(
-            positionSize) + ", " + str(positionMargin) + ", " + str(positionLstUpdCPF) + ", " + str(positionTimestamp) + ", " + str(unrealizedPnl['value']) + ")"}).json()
+            positionSize) + ", " + str(positionMargin) + ", " + str(positionLastUpdCPF) + ", " + str(positionTimestamp) + ", " + str(unrealizedPnl['value']) + ")"}).json()
         return res['result']
 
     def getLastMinuteId(self):
@@ -123,20 +126,22 @@ class Tsunami:
                             json={"expr": "getMarketPrice(\"" + self.amm + "\")"}).json()
         return req['result']['value']
 
-    def short(self, wallet,  investment, margin, ref):
+    def short(self, wallet, investment, margin, ref):
         minBaseAssetAmount = ((investment * margin) /
-                              self.getMarketPriceFromDapp())
+                              self.getMarketPriceFromDapp()) * 0.97
         tx = wallet.invokeScript(self.amm, "increasePosition", [{"type": "integer", "value": self.SHORT}, {
-            "type": "integer", "value": margin}, {"type": "integer", "value": int(minBaseAssetAmount)}, {"type": "string", "value": ref}],
+            "type": "integer", "value":  margin * 1000000}, {"type": "integer", "value": int(minBaseAssetAmount * pow(10, 6))}, {"type": "string", "value": ref}],
             [{"amount": investment, "assetId": "DG2xFkPdDwKUoBkzGAhQtLpSGzfXLiCYPEzeKH2Ad24p"}])
         return tx
 
     def long(self, wallet,  investment, margin, ref):
         minBaseAssetAmount = ((investment * margin) /
-                              self.getMarketPriceFromDapp()) / pow(10, 6)
-        wallet.invokeScript(self.amm, "increasePosition", [{"type": "integer", "value": self.LONG}, {
-            "type": "integer", "value": margin}, {"type": "integer", "value": int(minBaseAssetAmount)}, {"type": "string", "value": ref}],
+                              self.getMarketPriceFromDapp()) * 0.97
+        invoke = wallet.invokeScript(self.amm, "increasePosition", [{"type": "integer", "value": self.LONG}, {
+            "type": "integer", "value": margin * 1000000}, {"type": "integer", "value": int(minBaseAssetAmount * pow(10, 6))}, {"type": "string", "value": ref}],
             [{"amount": investment, "assetId": "DG2xFkPdDwKUoBkzGAhQtLpSGzfXLiCYPEzeKH2Ad24p"}])
+
+        return invoke
 
     def closePosition(self, wallet):
         size = self.getPositionSize()
